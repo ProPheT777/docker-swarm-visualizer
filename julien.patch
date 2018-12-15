@@ -1,0 +1,328 @@
+From 1459ba393cf22dd19c397e18f60f2413ec9bc5a7 Mon Sep 17 00:00:00 2001
+From: Julien Orain <julien.orain-ext@yrnet.com>
+Date: Thu, 30 Aug 2018 15:33:24 +0200
+Subject: [PATCH 1/3] feat: add filter on nodes according to labels
+
+---
+ src/main.js                  |  9 ++++
+ src/utils/filter-nodes.js    | 79 ++++++++++++++++++++++++++++++++++++
+ src/vis-physical/index.js    | 12 ++++++
+ src/vis-physical/styles.less |  8 ++--
+ 4 files changed, 104 insertions(+), 4 deletions(-)
+ create mode 100644 src/utils/filter-nodes.js
+
+diff --git a/src/main.js b/src/main.js
+index 2598d5e..65455f4 100644
+--- a/src/main.js
++++ b/src/main.js
+@@ -39,6 +39,15 @@ tabPhysical.addEventListener('click', () => {
+     filterDiv.classList.add('hide');
+     filterDiv.classList.remove('show');
+   }
++  filterDiv = document.querySelector('#filter-nodes-wrapper');
++  if (filterDiv.classList.value.indexOf('hide') >= 0) {
++    filterDiv.classList.remove('hide');
++    filterDiv.classList.add('show');
++  }
++  else {
++    filterDiv.classList.add('hide');
++    filterDiv.classList.remove('show');
++  }
+ });
+ 
+ /* Enable polling */
+diff --git a/src/utils/filter-nodes.js b/src/utils/filter-nodes.js
+new file mode 100644
+index 0000000..4c0f616
+--- /dev/null
++++ b/src/utils/filter-nodes.js
+@@ -0,0 +1,79 @@
++let filterNodesTimeout;
++
++function filterNodesTimeoutCallback() {
++  let newHistory = encodeURI(document.querySelector('#filter-nodes').value);
++  history.pushState({}, '', '?filterNodes=' + newHistory);
++}
++
++function filterNodesHistory() {
++  if (typeof filterNodesTimeout !== 'undefined') {
++    clearTimeout(filterNodesTimeout);
++  }
++  filterNodesTimeout = setTimeout(filterNodesTimeoutCallback, 500);
++}
++
++function filterNodesMap(element) {
++  let component = element.split('=');
++  this[component[0]] = component[1];
++  return this;
++}
++
++export function filterNodes() {
++
++  // Fetch DOM elements, break each word in input filter.
++  let filterNodesValues = document.querySelector('#filter-nodes').value.trim().split(' ');
++  let nodes = document.querySelectorAll('.node');
++
++  // Iterate through each node.
++  for (let i = 0; i < nodes.length; i++) {
++
++    // Get node title.
++    let spanText = nodes[i].querySelector('.labelarea').querySelector('span').innerHTML;
++
++    // Define hidden by default.
++    let hide = true;
++
++    // Iterate through each word, show if any are found.
++    for (let j = 0; j < filterNodesValues.length; j++) {
++      if (spanText.indexOf(filterNodesValues[j]) >= 0) {
++        hide = false;
++        break;
++      }
++    }
++
++    // Display or hide node, based on filter.
++    if (hide) {
++      nodes[i].classList.add('hide');
++      nodes[i].classList.remove('show');
++    }
++    else {
++      nodes[i].classList.remove('hide');
++      nodes[i].classList.add('show');
++    }
++  }
++  filterNodesHistory();
++}
++
++export function filterNodesOnLoad() {
++  let filterNodesInput = document.querySelector('#filter-nodes');
++  if (!filterNodesInput) {
++    setTimeout(filterNodesOnLoad, 1000);
++    return;
++  }
++  let search = decodeURIComponent(location.search);
++  if (!search) {
++    return;
++  }
++
++  let searchObj = search
++    .substring(1)
++    .split('&')
++    .map(filterNodesMap, {})[0];
++
++  if (searchObj.filterNodes) {
++    filterNodesInput.value = searchObj.filterNodes;
++    console.log('about to call filterNodes');
++    console.log(typeof filterNodes);
++    setTimeout(filterNodes, 2000);
++  }
++}
+diff --git a/src/vis-physical/index.js b/src/vis-physical/index.js
+index eeb1b25..5326395 100644
+--- a/src/vis-physical/index.js
++++ b/src/vis-physical/index.js
+@@ -6,6 +6,7 @@ import _ from 'lodash';
+ 
+ import { uuidRegExp, capitalize } from '../utils/helpers';
+ import { filterContainers, filterOnLoad } from "../utils/filter-containers";
++import { filterNodes, filterNodesOnLoad } from "../utils/filter-nodes";
+ 
+ var { innerWidth:W, innerHeight:H } = window;
+ 
+@@ -26,6 +27,17 @@ let filterInput = filterDiv.append('input')
+ filterInput.on('keyup', filterContainers);
+ filterOnLoad();
+ 
++let filterNodesDiv = wrapper.append('div')
++    .attr('id', 'filter-nodes-wrapper');
++
++let filterNodesInput = filterNodesDiv.append('input')
++    .attr('id', 'filter-nodes')
++    .attr('placeholder', 'filter nodes on labels');
++
++filterNodesInput.on('keyup', filterNodes);
++filterNodesOnLoad();
++
++
+ function removeVis() {
+   cluster = wrapper.selectAll('.node-cluster')
+   cluster.remove();
+diff --git a/src/vis-physical/styles.less b/src/vis-physical/styles.less
+index 95d483d..c93fcbf 100644
+--- a/src/vis-physical/styles.less
++++ b/src/vis-physical/styles.less
+@@ -230,18 +230,18 @@
+   100% { opacity: 1; transform: scale(1); max-height: 500px; }
+ }
+ 
+-#vis-physical .container.hide {
++#vis-physical .container.hide, #vis-physical .node.hide {
+   animation: hide .5s forwards;
+ }
+ 
+-#vis-physical .container.show {
++#vis-physical .container.show, #vis-physical .node.show {
+   animation: show .5s forwards;
+ }
+ 
+-#filter-wrapper.hide {
++#filter-wrapper.hide, #filter-nodes-wrapper.hide {
+   animation: hide .5s forwards;
+ }
+ 
+-#filter-wrapper.show {
++#filter-wrapper.show, #filter-nodes-wrapper.show {
+   animation: show .5s forwards;
+ }
+\ No newline at end of file
+
+From 0cbd9a2fce2bf60b936413f926520d84cade50e2 Mon Sep 17 00:00:00 2001
+From: Julien Orain <julien.orain-ext@yrnet.com>
+Date: Thu, 30 Aug 2018 16:42:11 +0200
+Subject: [PATCH 2/3] fix: style and search
+
+---
+ src/utils/filter-containers.js |  3 ++-
+ src/utils/filter-nodes.js      | 16 +++++++++++-----
+ src/vis-physical/styles.less   | 24 ++++++++++++++++++++----
+ 3 files changed, 33 insertions(+), 10 deletions(-)
+
+diff --git a/src/utils/filter-containers.js b/src/utils/filter-containers.js
+index 48af51d..d8a2236 100644
+--- a/src/utils/filter-containers.js
++++ b/src/utils/filter-containers.js
+@@ -2,7 +2,8 @@ let filterTimeout;
+ 
+ function filterTimeoutCallback() {
+   let newHistory = encodeURI(document.querySelector('#filter').value);
+-  history.pushState({}, '', '?filter=' + newHistory);
++  let newHistoryNodes = encodeURI(document.querySelector('#filter-nodes').value);
++  history.pushState({}, '', '?filter=' + newHistory + '&filterNodes=' + newHistoryNodes);
+ }
+ 
+ function filterHistory() {
+diff --git a/src/utils/filter-nodes.js b/src/utils/filter-nodes.js
+index 4c0f616..380682b 100644
+--- a/src/utils/filter-nodes.js
++++ b/src/utils/filter-nodes.js
+@@ -1,8 +1,9 @@
+ let filterNodesTimeout;
+ 
+ function filterNodesTimeoutCallback() {
+-  let newHistory = encodeURI(document.querySelector('#filter-nodes').value);
+-  history.pushState({}, '', '?filterNodes=' + newHistory);
++  let newHistory = encodeURI(document.querySelector('#filter').value);
++  let newHistoryNodes = encodeURI(document.querySelector('#filter-nodes').value);
++  history.pushState({}, '', '?filter=' + newHistory + '&filterNodes=' + newHistoryNodes);
+ }
+ 
+ function filterNodesHistory() {
+@@ -28,15 +29,20 @@ export function filterNodes() {
+   for (let i = 0; i < nodes.length; i++) {
+ 
+     // Get node title.
+-    let spanText = nodes[i].querySelector('.labelarea').querySelector('span').innerHTML;
++    let spanText = nodes[i].querySelector('.labelarea').querySelectorAll('span');
+ 
+     // Define hidden by default.
+     let hide = true;
+ 
+     // Iterate through each word, show if any are found.
+     for (let j = 0; j < filterNodesValues.length; j++) {
+-      if (spanText.indexOf(filterNodesValues[j]) >= 0) {
+-        hide = false;
++      for(let k = 0; k < spanText.length; k++) {
++        if (spanText[k].innerHTML.indexOf(filterNodesValues[j]) >= 0) {
++          hide = false;
++          break;
++        }
++      }
++      if(!hide) {
+         break;
+       }
+     }
+diff --git a/src/vis-physical/styles.less b/src/vis-physical/styles.less
+index c93fcbf..236b21b 100644
+--- a/src/vis-physical/styles.less
++++ b/src/vis-physical/styles.less
+@@ -230,18 +230,34 @@
+   100% { opacity: 1; transform: scale(1); max-height: 500px; }
+ }
+ 
+-#vis-physical .container.hide, #vis-physical .node.hide {
++#vis-physical .container.hide{
+   animation: hide .5s forwards;
+ }
+ 
+-#vis-physical .container.show, #vis-physical .node.show {
++#vis-physical .container.show {
+   animation: show .5s forwards;
+ }
+ 
+-#filter-wrapper.hide, #filter-nodes-wrapper.hide {
++#filter-wrapper.hide,  {
+   animation: hide .5s forwards;
+ }
+ 
+-#filter-wrapper.show, #filter-nodes-wrapper.show {
++#filter-wrapper.show {
+   animation: show .5s forwards;
++}
++
++#vis-physical .node.hide {
++  display: none;
++}
++
++#vis-physical .node.show {
++  display: block;
++}
++
++#filter-nodes-wrapper.hide {
++  display: none;
++}
++
++#filter-nodes-wrapper.show {
++  display: block;
+ }
+\ No newline at end of file
+
+From f850ab016b2ba68990c233d0456b1a5466f21236 Mon Sep 17 00:00:00 2001
+From: Julien Orain <julien.orain-ext@yrnet.com>
+Date: Thu, 30 Aug 2018 17:01:16 +0200
+Subject: [PATCH 3/3] fix: style and search
+
+---
+ src/vis-physical/styles.less | 12 ++----------
+ 1 file changed, 2 insertions(+), 10 deletions(-)
+
+diff --git a/src/vis-physical/styles.less b/src/vis-physical/styles.less
+index 236b21b..c66b910 100644
+--- a/src/vis-physical/styles.less
++++ b/src/vis-physical/styles.less
+@@ -238,11 +238,11 @@
+   animation: show .5s forwards;
+ }
+ 
+-#filter-wrapper.hide,  {
++#filter-wrapper.hide, #filter-nodes-wrapper.hide {
+   animation: hide .5s forwards;
+ }
+ 
+-#filter-wrapper.show {
++#filter-wrapper.show, #filter-nodes-wrapper.show {
+   animation: show .5s forwards;
+ }
+ 
+@@ -252,12 +252,4 @@
+ 
+ #vis-physical .node.show {
+   display: block;
+-}
+-
+-#filter-nodes-wrapper.hide {
+-  display: none;
+-}
+-
+-#filter-nodes-wrapper.show {
+-  display: block;
+ }
+\ No newline at end of file

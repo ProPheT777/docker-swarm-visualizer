@@ -243,7 +243,7 @@
   100% { opacity: 1; transform: scale(1); max-height: 500px; }
 }
 
-#vis-physical .container.hide {
+#vis-physical .container.hide{
   animation: hide .5s forwards;
 }
 
@@ -251,10 +251,18 @@
   animation: show .5s forwards;
 }
 
-#filter-wrapper.hide {
+#filter-wrapper.hide, #filter-nodes-wrapper.hide {
   animation: hide .5s forwards;
 }
 
-#filter-wrapper.show {
+#filter-wrapper.show, #filter-nodes-wrapper.show {
   animation: show .5s forwards;
+}
+
+#vis-physical .node.hide {
+  display: none;
+}
+
+#vis-physical .node.show {
+  display: block;
 }
