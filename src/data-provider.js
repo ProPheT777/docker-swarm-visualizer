@@ -55,8 +55,6 @@ let stringToColor = (str) => {
     return color;
 };
 
-
-
 let physicalStructProvider = ([initialNodes, initialContainers]) => {
     let containers = _.map(initialContainers, _.cloneDeep);
     let nodeClusters = [{ uuid: "clusterid", name: "" }];
@@ -72,23 +70,20 @@ let physicalStructProvider = ([initialNodes, initialContainers]) => {
                 var dt = new Date(cloned.UpdatedAt);
                 var color = stringToColor(cloned.ServiceID);
                 let serviceName = cloned.ServiceName;
-                let imageNameRegex = /([^/]+?)(\:([^/]+))?$/;
+                let imageNameRegex = /((.*?)??\/?([^/.:]*?)\/?([^/:]+))\:?([^/\@]+)?\@?([^/]+)?$/;
                 let imageNameMatches = imageNameRegex.exec(cloned.Spec.ContainerSpec.Image);
-                let tagName = imageNameMatches[3];
-                let dateStamp = dt.getDate() + "/" + (dt.getMonth() + 1) + " " + dt.getHours() + ":" + dt.getMinutes();
+                let tagName = imageNameMatches[5];
+                let dateStamp = (dt.getFullYear()) + "-" + ('0' + (dt.getMonth() + 1)).slice(-2) + "-" + ('0' + dt.getDate()).slice(-2) + " " + ('0' + dt.getHours()).slice(-2) + ":" + ('0' + dt.getMinutes()).slice(-2);
                 let startState = cloned.Status.State;
 
-
-
-
-                let imageTag = "<div style='height: 100%; padding: 5px 5px 5px 5px; border: 2px solid " + color + "'>" +
-                    "<span class='contname' style='color: white; font-weight: bold;font-size: 12px'>" + serviceName + "</span>" +
-                    "<br/> image : " + imageNameMatches[0] +
-                    "<br/> tag : " + (tagName ? tagName : "latest") +
-                    "<br/>" + (cloned.Spec.ContainerSpec.Args ? " cmd : " + cloned.Spec.ContainerSpec.Args + "<br/>" : "") +
-                    " updated : " + dateStamp +
-                    "<br/>" + cloned.Status.ContainerStatus.ContainerID +
-                    "<br/> state : " + startState +
+                let imageTag = "<div style='height: 100%; padding: 4px 4px 4px 4px; border: 2px solid " + color + "'>" +
+                    "<div class='row'>" + "<span class='contname' style='color: white; font-weight: bold;font-size: 12px'>" + serviceName + "</span>" + "</div>" +
+                    "<div class='row' title='" + imageNameMatches[1] + "'>" + "image: " + (imageNameMatches[3] ? imageNameMatches[3] + "/" : "") + imageNameMatches[4]+ "</div>" +
+                    "<div class='row' title='" + imageNameMatches[6] + "'>" + "tag: " + (tagName ? tagName : "latest") + "</div>" +
+                    "<div class='row'>" + (cloned.Spec.ContainerSpec.Args ? " cmd: " + cloned.Spec.ContainerSpec.Args + "<br/>" : "") + "</div>" +
+                    "<div class='row'>" + " updated: " + dateStamp + "</div>" +
+                    "<div class='row' title='" + cloned.Status.ContainerStatus.ContainerID + "'>" + "id: " + cloned.Status.ContainerStatus.ContainerID.substr(0,16) + "</div>" +
+                    "<div class='row'>" + "state: " + startState + "</div>" +
                     "</div>";
 
                 if (node.Spec.Role == 'manager') {
@@ -172,9 +167,11 @@ let physicalStructProvider = ([initialNodes, initialContainers]) => {
                             name = node.Description.Hostname;
                             if (name.length > 0) {
                                 currentnode.Description.Hostname = name;
-                                currentnode.name = name + " <br/><span class='noderole'>" + node.Spec.Role +
-                                    "</span><br/><span class='nodemem'>" + (currentnode.Description.Resources.MemoryBytes / 1024 / 1024 / 1024).toFixed(3) + "G RAM</span><br/>" +
-                                    "<span class='nodeplatform'>" + (currentnode.Description.Platform.Architecture) + "/" + (currentnode.Description.Platform.OS) + "</span>" +
+                                currentnode.name = "<span class='row nodename'>" + name + "</span>" +
+                                    "<div class='row noderole role_"+ node.Spec.Role + "'>" + node.Spec.Role + "</div>" +
+                                    // "<div class='row nodeaddr'>" + node.Status.Addr + "</div>" +
+                                    // "<br/><span class='nodemem'>" + (currentnode.Description.Resources.MemoryBytes / 1024 / 1024 / 1024).toFixed(3) + "G RAM</span><br/>" +
+                                    // "<span class='nodeplatform'>" + (currentnode.Description.Platform.Architecture) + "/" + (currentnode.Description.Platform.OS) + "</span>" +
                                     "<div class='labelarea'>";
                                 for (var key in node.Spec.Labels) {
                                     if (node.Spec.Labels[key].length > 0) {
